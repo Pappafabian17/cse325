@@ -1,0 +1,16 @@
+@page "/"
+
+<PageTitle>Connect Four - Blazor</PageTitle>
+
+<div class="mb-3">
+    <h1 class="display-6 fw-bold text-primary">🔴 Connect Four</h1>
+    <p class="text-muted">
+        Classic 4-in-a-row game built with Blazor and ASP.NET Core (.NET 8).
+        Drop your pieces into the columns to connect four horizontally, vertically, or diagonally!
+    </p>
+</div>
+
+<Board @rendermode="InteractiveServer"
+       BoardColor="System.Drawing.Color.Yellow"
+       Player1Color="System.Drawing.Color.Red"
+       Player2Color="System.Drawing.Color.Blue" />

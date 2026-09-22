@@ -1,0 +1,210 @@
+@using System.Drawing
+@inject GameState State
+
+<HeadContent>
+    <style>
+        :root {
+            --board-bg: @currentBoardColor;
+            --player1: @currentPlayer1Color;
+            --player2: @currentPlayer2Color;
+        }
+    </style>
+</HeadContent>
+
+<article class="mb-3">
+    @if (!string.IsNullOrEmpty(winnerMessage))
+    {
+        <h3>@winnerMessage <button class="btn btn-link" @onclick="ResetGame">Play again</button></h3>
+    }
+    else
+    {
+        <h4>Player @State.PlayerTurn's Turn</h4>
+    }
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger" role="alert">@errorMessage</div>
+    }
+</article>
+
+<div class="d-flex flex-wrap gap-4 align-items-start">
+    <div>
+        <nav>
+            @for (byte i = 0; i < 7; i++)
+            {
+                var col = i;
+                <span title="Click to play a piece" @onclick="() => PlayPiece(col)">🔽</span>
+            }
+        </nav>
+
+        <div>
+            <div class="board">
+                @for (var i = 0; i < 42; i++)
+                {
+                    <span class="container">
+                        <span></span>
+                    </span>
+                }
+            </div>
+            @for (var i = 0; i < 42; i++)
+            {
+                <span class="@pieces[i]"></span>
+            }
+        </div>
+    </div>
+
+    <div style="min-width: 260px; max-width: 300px;">
+        <div class="card p-3 mb-3 shadow-sm">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="m-0">Scoreboard</h5>
+                <button class="btn btn-sm btn-outline-secondary py-0" @onclick="ResetScoreboard">Reset</button>
+            </div>
+            <div class="d-flex justify-content-around text-center border-top pt-2">
+                <div>
+                    <small class="text-muted d-block">Player 1</small>
+                    <strong class="fs-4" style="color: @currentPlayer1Color">@State.Player1Wins</strong>
+                </div>
+                <div>
+                    <small class="text-muted d-block">Ties</small>
+                    <strong class="fs-4 text-secondary">@State.Ties</strong>
+                </div>
+                <div>
+                    <small class="text-muted d-block">Player 2</small>
+                    <strong class="fs-4" style="color: @currentPlayer2Color">@State.Player2Wins</strong>
+                </div>
+            </div>
+            @if (State.CurrentStreakCount > 1 && State.CurrentStreakPlayer > 0)
+            {
+                <div class="alert alert-warning py-1 px-2 mt-2 mb-0 small text-center">
+                    🔥 Player @State.CurrentStreakPlayer streak: @State.CurrentStreakCount wins!
+                </div>
+            }
+        </div>
+
+        <div class="card p-3 shadow-sm">
+            <h5 class="mb-2">Game Colors</h5>
+            <div class="d-flex flex-column gap-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <label for="p1Color" class="small mb-0">Player 1:</label>
+                    <input id="p1Color" type="color" class="color-picker" value="@currentPlayer1Color" @onchange="OnPlayer1ColorChanged" />
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <label for="p2Color" class="small mb-0">Player 2:</label>
+                    <input id="p2Color" type="color" class="color-picker" value="@currentPlayer2Color" @onchange="OnPlayer2ColorChanged" />
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <label for="boardColor" class="small mb-0">Board:</label>
+                    <input id="boardColor" type="color" class="color-picker" value="@currentBoardColor" @onchange="OnBoardColorChanged" />
+                </div>
+            </div>
+            <div class="d-flex gap-1 mt-3 justify-content-center">
+                <button type="button" class="btn btn-sm btn-outline-dark py-0 px-2" @onclick="SetClassicPreset">Classic</button>
+                <button type="button" class="btn btn-sm btn-outline-dark py-0 px-2" @onclick="SetGreenPreset">Green</button>
+                <button type="button" class="btn btn-sm btn-outline-dark py-0 px-2" @onclick="SetSkyPreset">Sky</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public Color BoardColor { get; set; } = ColorTranslator.FromHtml("yellow");
+
+    [Parameter]
+    public Color Player1Color { get; set; } = ColorTranslator.FromHtml("red");
+
+    [Parameter]
+    public Color Player2Color { get; set; } = ColorTranslator.FromHtml("blue");
+
+    private string currentBoardColor = "#ffff00";
+    private string currentPlayer1Color = "#ff0000";
+    private string currentPlayer2Color = "#0000ff";
+
+    private string[] pieces = new string[42];
+    private string winnerMessage = string.Empty;
+    private string errorMessage = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        State.ResetBoard();
+    }
+
+    protected override void OnParametersSet()
+    {
+        currentBoardColor = ColorTranslator.ToHtml(BoardColor);
+        currentPlayer1Color = ColorTranslator.ToHtml(Player1Color);
+        currentPlayer2Color = ColorTranslator.ToHtml(Player2Color);
+    }
+
+    private void PlayPiece(byte col)
+    {
+        errorMessage = string.Empty;
+        try
+        {
+            var player = State.PlayerTurn;
+            var turn = State.CurrentTurn;
+            var landingRow = State.PlayPiece(col);
+            pieces[turn] = $"player{player} col{col} drop{landingRow}";
+
+            winnerMessage = State.CheckForWin() switch
+            {
+                GameState.WinState.Player1_Wins => "Player 1 Wins!",
+                GameState.WinState.Player2_Wins => "Player 2 Wins!",
+                GameState.WinState.Tie => "It's a tie!",
+                _ => ""
+            };
+        }
+        catch (ArgumentException ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    private void ResetGame()
+    {
+        State.ResetBoard();
+        winnerMessage = string.Empty;
+        errorMessage = string.Empty;
+        pieces = new string[42];
+    }
+
+    private void ResetScoreboard()
+    {
+        State.ResetScoreboard();
+    }
+
+    private void OnPlayer1ColorChanged(ChangeEventArgs e)
+    {
+        if (e.Value is string hex && !string.IsNullOrWhiteSpace(hex))
+        {
+            currentPlayer1Color = hex;
+        }
+    }
+
+    private void OnPlayer2ColorChanged(ChangeEventArgs e)
+    {
+        if (e.Value is string hex && !string.IsNullOrWhiteSpace(hex))
+        {
+            currentPlayer2Color = hex;
+        }
+    }
+
+    private void OnBoardColorChanged(ChangeEventArgs e)
+    {
+        if (e.Value is string hex && !string.IsNullOrWhiteSpace(hex))
+        {
+            currentBoardColor = hex;
+        }
+    }
+
+    private void SetColorPreset(string p1, string p2, string board)
+    {
+        currentPlayer1Color = p1;
+        currentPlayer2Color = p2;
+        currentBoardColor = board;
+    }
+
+    private void SetClassicPreset() => SetColorPreset("#ff0000", "#0000ff", "#ffff00");
+    private void SetGreenPreset() => SetColorPreset("#15803d", "#86efac", "#212529");
+    private void SetSkyPreset() => SetColorPreset("#1d4ed8", "#38bdf8", "#0f172a");
+}
